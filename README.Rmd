@@ -13,17 +13,26 @@ knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "REA
 
 `pilsner` : **P**atient **I**ndividual **L**evel **S**imulation, **N**on-interacting but **E**fficient, using **R**cpp
 
-Explain what it's for 
+This uses `Rcpp` to provide a single function in R:
 
-- `simulator` : description
+- `simulator` : take an cohort and return the final state after a DES run (optionally, data on all events)
+
+This implements a time-to-event discrete event simulation, assuming completely independent individuals. 
+The user specifies the DES event logic in the simple file `src/eventlogic.cpp`, but need not worry about the simulation engine.
+More details are explained below. 
 
 
 ### Installation
 
+Because the simulation is specified in C++, the `Rcpp` R package must be installed:
+
 ```{r eval=FALSE}
-install.packages("ggplot2")
-install.packages("Rcpp")
+install.packages("ggplot2") # needed for the graph
+install.packages("Rcpp") #needed to run the models
 ```
+This may require reading the relevant package installation guidance pages and downloading a compiler. This will be system-dependent. 
+On Mac or Linux, a working compiler probably already exists. 
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 options(width=120)
@@ -31,20 +40,74 @@ options(width=120)
 
 ### Logic
 
-```{r}
-## TODO
-```
+The function `simulator` takes 6 arguments:
+
+- `AM` - a column-named matrix of inital age-like quantities (eg age, time-since-event), which will advance with time. 1 row per person 
+- `CM` - a column-named matrix of initial continuous person characteristics. 1 row per person 
+- `DM` - a column-named matrix of initial integer person characteristics (eg for sex etc). 1 row per person 
+- `endtime` - when to stop the simulation
+- `parmzl` - a list of named vectors specifying parameters (either length 1, or length the cohort size) 
+- `recording` - a boolean (default `FALSE`) specifying whether to record and return event data (will substantially slow the model down)
+
+The `simulator` function acts by side-effect for speed, i.e. it will alter the supplied data. **NB** this can be dangerous if unwary, eg with repeated simulation. However, it does facilitate onward simulation.
+
+The person objects created in the engine, with have accessible data accessible via the column names (see below). The nature of `parmzl` allows either PSA or individualized simulation parameters (again & see below, accessible by name in writing the logic).
+
 
 ### Usage
 
-blah
+Having specified a model, we can load up the `Rcpp` package and compile it:
 
-```{r test, message=FALSE, warning=FALSE, fig.height=9.5, fig.width=9.5}
-library(ggplot2)
 
-#TODO
+```{r}
+library(Rcpp) # assuming in dir above src
+sourceCpp('src/pilsner.cpp') #compiles: only needed once per session
+```
+Then specify some input data:
+
+```{r}
+NN <- 1e4 #cohort size
+AM <- matrix(15,ncol=1,nrow=NN); colnames(AM) <- "age" # age data <0 will not be advanced
+CM <- matrix(0,ncol=2,nrow=NN); colnames(CM) <- c("timeofdeath","timeofinfection")
+DM <- matrix(1,ncol=2,nrow=NN); colnames(DM) <- c("alive","infected")
+DM[,2] <- 0 #start uninfected
+```
+
+Here are some parameters, specified in a round about way, to illustrate both single and individualized parameter input data
+
+```{r}
+## parameter examples
+PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN),nu=rep(0.1,NN))
+df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #for converting dataframe
+PP0 <- list(unlist(PP[1,])) # take the top row as a parameter input
+PPL <- df2l(PP) # split the whole dataframe into a list with separate parameter for everyone
+```
+
+Now we can run the model and examine the output:
+```{r}
+out <- simulator(AM,CM,DM,100,PPL,recording=FALSE) #returns by side effect
+summary(out)
+head(DM)
+head(CM)
+head(AM)
+summary(DM)
+```
+Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
+
+Check by plotting:
+```{r, message=FALSE, warning=FALSE, fig.height=9.5, fig.width=9.5}
+library(ggplot2); theme_minimal() # loading plotting library (once)
+P <- ggplot(as.data.frame(cbind(AM,DM)),
+      aes(x=age,fill=factor(infected))) +
+  geom_histogram()
+print(P)  
 ```
 
 ### Model specification
 
-TODO
+TODO also <0 advance bug? & CR
+
+
+### Warning
+
+There are indubitably bugs -- this isn't fully tested. Feedback and corrections most welcome!
