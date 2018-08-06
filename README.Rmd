@@ -3,6 +3,7 @@ output: rmarkdown::github_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- using Rscript -e 'library(rmarkdown); rmarkdown::render("README.Rmd")' -->
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "README_figs/README-")
