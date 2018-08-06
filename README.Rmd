@@ -1,0 +1,49 @@
+---
+output: rmarkdown::github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "README_figs/README-")
+```
+
+
+
+`pilsner` : *P*atient *I*ndividual *L*evel *S*imulation, *Non*-interacting but *E*fficient using *R*cpp
+
+Explain what it's for 
+
+- `simulator` : description
+
+
+### Installation
+
+```{r eval=FALSE}
+install.packages("ggplot2")
+install.packages("Rcpp")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+options(width=120)
+```
+
+### Logic
+
+```{r}
+## TODO
+```
+
+### Usage
+
+blah
+
+```{r test, message=FALSE, warning=FALSE, fig.height=9.5, fig.width=9.5}
+library(ggplot2)
+
+#TODO
+```
+
+### Model specification
+
+TODO

@@ -1,0 +1,8 @@
+.Rhistory
+.RData
+.DS_Store
+*.o
+graphs/*pdf
+test/*pdf
+tables/*pdf
+tables/*docx
