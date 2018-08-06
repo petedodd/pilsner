@@ -96,10 +96,10 @@ Note again how this acts by side-effect. `out` contains a reminder that it is em
 
 Check by plotting:
 ```{r, message=FALSE, warning=FALSE, fig.height=9.5, fig.width=9.5}
-library(ggplot2); theme_minimal() # loading plotting library (once)
+library(ggplot2)  # loading plotting library (once)
 P <- ggplot(as.data.frame(cbind(AM,DM)),
       aes(x=age,fill=factor(infected))) +
-  geom_histogram()
+  geom_histogram() + theme_classic()
 print(P)  
 ```
 
