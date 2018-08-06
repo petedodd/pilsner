@@ -1,11 +1,12 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- using Rscript -e 'library(rmarkdown); rmarkdown::render("README.Rmd")' -->
 
 
 
 
 
-`pilsner` : *P*atient *I*ndividual *L*evel *S*imulation, *Non*-interacting but *E*fficient using *R*cpp
+`pilsner` : **P**atient **I**ndividual **L**evel **S**imulation, **N**on-interacting but **E**fficient, using **R**cpp
 
 Explain what it's for
 
