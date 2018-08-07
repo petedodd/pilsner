@@ -33,6 +33,8 @@ install.packages("Rcpp") #needed to run the models
 This may require reading the relevant package installation guidance pages and downloading a compiler. This will be system-dependent. 
 On Mac or Linux, a working compiler probably already exists. 
 
+Then either download or clone this repo: the source files are in the `src` directory.
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 options(width=120)
@@ -77,7 +79,7 @@ Here are some parameters, specified in a round about way, to illustrate both sin
 
 ```{r}
 ## parameter examples
-PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN),nu=rep(0.1,NN))
+PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN))
 df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #fn for converting dataframe
 PP0 <- list(unlist(PP[1,])) # take the top row as a parameter input
 PPL <- df2l(PP) # split the whole dataframe into a list with separate parameter for everyone
@@ -115,7 +117,67 @@ The object returned now contains details of the events to check behaviour is as 
 
 ### Model specification
 
-TODO 
+To code your own model, you need to edit a simple C++ function in `eventlogic.cpp` which looks like this:
+
+```{Rcpp,eval=FALSE}
+int eventdefn( person& P,       // person to be acted on
+               double& now,     // reference to current time
+               event & ev,      // event to be enacted
+               eventq& EQ,      // event queue to add consequences to
+               NumericVector& Z// ,          // input parameters
+               // gsl_rng *r
+               ){
+  now = ev.t;                   // advance time
+  if(P.D["alive"]==1){          // RIP
+    updateages(P.A,ev.t-P.tle);    // update all age-like things
+    P.tle = ev.t;       // doesn't matter if no change; last event time used for aging
+    event todo = {.t=now, .who=P.who, .what=""}; // event to be determined
+
+// ...STUFF TO EDIT HERE...
+   
+  }
+  return 0;
+}
+
+```
+
+This much should probably be left as it is, unless you want to edit the guard that means the dead are left alone. The `updateages` call does what it says.
+There are a few basic features one needs to understand to be able to work with this:
+
+- events are C structs and comprise a triple of when, who, and what. Writing an event should be as easy as setting the time of the event labeled `todo` and assing a string to say what it is
+- events are added to an event queue by writing `EQ.push(todo)`;
+- the data for a person (**A**ges, **D**iscrete and **C**ontinuous) are accessed as in the `P.D["alive"]` example here. The programme knows about these names from the column names passed to `simulator`
+- the parameter input data for the relevant person are in `Z` accessed by a string set to the parameter name 
+- a basic understanding of R's random deviates from distributions is needed to assign time-to-events
+- any additional events spawned must be defined and added onto the event queue
+- special events called "initialize" and "finalize" are called for everyone at the start and end. NB do not try to use these as names of other events
+- NB all eligibility/guard logic for events is the responsibility of the user! Nothing is assumed.
+
+For the simple exponential time-to-death or time-to-infection model we consider, the logit defines the events as follows:
+
+
+```{Rcpp,eval=FALSE}
+    if(ev.what=="initialize"){                                             // set up death/infection
+      todo.what="die"; todo.t = now - log(Rf_runif(0,1))/Z["mu"];          // time-to-death
+      EQ.push(todo);                                                       // add to queue
+      todo.what = "infect"; todo.t = now - log(Rf_runif(0,1))/Z["lambda"]; // t-to-infection
+      EQ.push(todo);                                                       // add to queue
+    }
+    if(ev.what=="infect"){              // infection event
+      if(P.D["infected"]==0){           // eligible for event
+        P.D["infected"] = 1;            // infect!
+        P.C["timeofinfection"] = ev.t;  // record
+      }
+    }
+    if(ev.what=="die"){//death event
+      P.D["alive"] = 0;                     // recorded as dead
+      P.C["timeofdeath"] = ev.t;            // recorded as dead
+    }
+    if(ev.what=="finalize"){
+      // no other changes needed: just for updating ages if alive
+    }
+
+```
 
 ### TODO list
 
@@ -133,4 +195,4 @@ There are indubitably bugs -- this isn't fully tested. Feedback and corrections 
 
 ### License
 
-(C) P.J. Dodd (2018): Distributed under CC BY 4.0 license https://creativecommons.org/licenses/by/4.0/
+Copyright P.J. Dodd (2018): Distributed under CC BY 4.0 license https://creativecommons.org/licenses/by/4.0/

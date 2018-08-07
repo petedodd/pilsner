@@ -16,10 +16,8 @@ int eventdefn( person& P,       // person to be acted on
     // --------- DEFINE LOGIC BELOW HERE (& possibly the "alive" guard): ---------
     // NB users completely responsible for any eligibility/guard logic & consistency between state/input names!!
     if(ev.what=="initialize"){
-      // todo.what="die"; todo.t = now + gsl_ran_exponential(r,10);     // time-to-death
       todo.what="die"; todo.t = now - log(Rf_runif(0,1))/Z["mu"];       // time-to-death
       EQ.push(todo);
-      // todo.what = "infect"; todo.t = now + gsl_ran_exponential(r,10);// t-to-infection
       todo.what = "infect"; todo.t = now - log(Rf_runif(0,1))/Z["lambda"];// t-to-infection
       EQ.push(todo);
     }
@@ -27,9 +25,6 @@ int eventdefn( person& P,       // person to be acted on
       if(P.D["infected"]==0){        // eligible for event
         P.D["infected"] = 1;         // infect!
         P.C["timeofinfection"] = ev.t;
-        // todo.what="die"; todo.t = now + gsl_ran_exponential(r,20); // time-to-death if infected
-        // todo.what="die"; todo.t = now - log(Rf_runif(0,1))/Z["nu"]; // time-to-death if infected
-        // EQ.push(todo);
       }
     }
     if(ev.what=="die"){

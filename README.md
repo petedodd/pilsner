@@ -25,6 +25,8 @@ install.packages("Rcpp") #needed to run the models
 
 This may require reading the relevant package installation guidance pages and downloading a compiler. This will be system-dependent. On Mac or Linux, a working compiler probably already exists.
 
+Then either download or clone this repo: the source files are in the `src` directory.
+
 ### Logic
 
 The function `simulator` takes 6 arguments:
@@ -63,7 +65,7 @@ Here are some parameters, specified in a round about way, to illustrate both sin
 
 ``` {.r}
 ## parameter examples
-PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN),nu=rep(0.1,NN))
+PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN))
 df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #fn for converting dataframe
 PP0 <- list(unlist(PP[1,])) # take the top row as a parameter input
 PPL <- df2l(PP) # split the whole dataframe into a list with separate parameter for everyone
@@ -73,7 +75,7 @@ Now we can run the model and examine the output:
 
 ``` {.r}
 out <- simulator(AM,CM,DM,100,PPL,recording=FALSE) #returns by side effect
-## 36236 events took place...in 0.070907 seconds.
+## 36313 events took place...in 0.068818 seconds.
 out
 ##   recording turned off
 ## 1         0      0   0
@@ -82,25 +84,25 @@ summary(DM)
 ##  Min.   :0.0000   Min.   :0.0000  
 ##  1st Qu.:0.0000   1st Qu.:0.0000  
 ##  Median :0.0000   Median :0.0000  
-##  Mean   :0.0061   Mean   :0.1672  
+##  Mean   :0.0071   Mean   :0.1704  
 ##  3rd Qu.:0.0000   3rd Qu.:0.0000  
 ##  Max.   :1.0000   Max.   :1.0000
 head(CM)
 ##      timeofdeath timeofinfection
-## [1,]   13.309429        0.000000
-## [2,]    5.108318        0.000000
-## [3,]   10.370497        0.000000
-## [4,]   38.884127        3.975055
-## [5,]   18.822349        0.000000
-## [6,]   13.483139        0.000000
+## [1,]    7.920570               0
+## [2,]    6.735046               0
+## [3,]    4.786525               0
+## [4,]    4.184110               0
+## [5,]    9.778131               0
+## [6,]   41.893517               0
 head(AM)
 ##           age
-## [1,] 28.30943
-## [2,] 20.10832
-## [3,] 25.37050
-## [4,] 53.88413
-## [5,] 33.82235
-## [6,] 28.48314
+## [1,] 22.92057
+## [2,] 21.73505
+## [3,] 19.78653
+## [4,] 19.18411
+## [5,] 24.77813
+## [6,] 56.89352
 ```
 
 Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
@@ -124,7 +126,7 @@ AM[,1] <- 15 # resetting data
 CM[,1] <- CM[,2] <- 0
 DM[,1] <-1; DM[,2] <- 0 
 out <- simulator(AM,CM,DM,100,PPL,recording=TRUE) #
-## 36235 events took place...in 0.112529 seconds.
+## 36293 events took place...in 0.125298 seconds.
 out[(NN-5):(NN+5),]
 ##              time      event  who
 ## 9995  0.000000000 initialize 8188
@@ -133,18 +135,74 @@ out[(NN-5):(NN+5),]
 ## 9998  0.000000000 initialize 8190
 ## 9999  0.000000000 initialize 4095
 ## 10000 0.000000000 initialize 8191
-## 10001 0.001439965        die 1579
-## 10002 0.002666722        die 3767
-## 10003 0.002846548        die 8156
-## 10004 0.003764989     infect 2232
-## 10005 0.005101420        die 4439
+## 10001 0.001391645        die 8271
+## 10002 0.002838486        die 6628
+## 10003 0.005710647        die 6975
+## 10004 0.005777740        die 9705
+## 10005 0.007923860        die 3838
 ```
 
 The object returned now contains details of the events to check behaviour is as expected. This should probably be changed to include internal data from people also (which is currently gathered in this mode but not formatted for output).
 
 ### Model specification
 
-TODO
+To code your own model, you need to edit a simple C++ function in `eventlogic.cpp` which looks like this:
+
+``` {.cpp}
+int eventdefn( person& P,       // person to be acted on
+               double& now,     // reference to current time
+               event & ev,      // event to be enacted
+               eventq& EQ,      // event queue to add consequences to
+               NumericVector& Z// ,          // input parameters
+               // gsl_rng *r
+               ){
+  now = ev.t;                   // advance time
+  if(P.D["alive"]==1){          // RIP
+    updateages(P.A,ev.t-P.tle);    // update all age-like things
+    P.tle = ev.t;       // doesn't matter if no change; last event time used for aging
+    event todo = {.t=now, .who=P.who, .what=""}; // event to be determined
+
+// ...STUFF TO EDIT HERE...
+   
+  }
+  return 0;
+}
+```
+
+This much should probably be left as it is, unless you want to edit the guard that means the dead are left alone. The `updateages` call does what it says. There are a few basic features one needs to understand to be able to work with this:
+
+-   events are C structs and comprise a triple of when, who, and what. Writing an event should be as easy as setting the time of the event labeled `todo` and assing a string to say what it is
+-   events are added to an event queue by writing `EQ.push(todo)`;
+-   the data for a person (**A**ges, **D**iscrete and **C**ontinuous) are accessed as in the `P.D["alive"]` example here. The programme knows about these names from the column names passed to `simulator`
+-   the parameter input data for the relevant person are in `Z` accessed by a string set to the parameter name
+-   a basic understanding of R's random deviates from distributions is needed to assign time-to-events
+-   any additional events spawned must be defined and added onto the event queue
+-   special events called "initialize" and "finalize" are called for everyone at the start and end. NB do not try to use these as names of other events
+-   NB all eligibility/guard logic for events is the responsibility of the user! Nothing is assumed.
+
+For the simple exponential time-to-death or time-to-infection model we consider, the logit defines the events as follows:
+
+``` {.cpp}
+    if(ev.what=="initialize"){                                             // set up death/infection
+      todo.what="die"; todo.t = now - log(Rf_runif(0,1))/Z["mu"];          // time-to-death
+      EQ.push(todo);                                                       // add to queue
+      todo.what = "infect"; todo.t = now - log(Rf_runif(0,1))/Z["lambda"]; // t-to-infection
+      EQ.push(todo);                                                       // add to queue
+    }
+    if(ev.what=="infect"){              // infection event
+      if(P.D["infected"]==0){           // eligible for event
+        P.D["infected"] = 1;            // infect!
+        P.C["timeofinfection"] = ev.t;  // record
+      }
+    }
+    if(ev.what=="die"){//death event
+      P.D["alive"] = 0;                     // recorded as dead
+      P.C["timeofdeath"] = ev.t;            // recorded as dead
+    }
+    if(ev.what=="finalize"){
+      // no other changes needed: just for updating ages if alive
+    }
+```
 
 ### TODO list
 
@@ -161,4 +219,4 @@ There are indubitably bugs -- this isn't fully tested. Feedback and corrections 
 
 ### License
 
-1.  P.J. Dodd (2018): Distributed under CC BY 4.0 license <https://creativecommons.org/licenses/by/4.0/>
+Copyright P.J. Dodd (2018): Distributed under CC BY 4.0 license <https://creativecommons.org/licenses/by/4.0/>
