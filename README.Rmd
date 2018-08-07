@@ -58,6 +58,12 @@ The person objects created in the engine, with have accessible data accessible v
 
 ### Usage
 
+Let's set the PRNG seed:
+
+```{r}
+set.seed(123)
+```
+
 Having specified a model, we can load up the `Rcpp` package and compile it:
 
 
@@ -140,11 +146,12 @@ int eventdefn( person& P,       // person to be acted on
 
 ```
 
-This much should probably be left as it is, unless you want to edit the guard that means the dead are left alone. The `updateages` call does what it says.
-There are a few basic features one needs to understand to be able to work with this:
+This much should probably be left as it is, unless you want to edit the guard that means the dead are left alone. This means `alive` should be one of the columns in the matrix `D` passed to `simulator`, with 1 meaning alive. The `updateages` call does what it says.
+
+There are a few other basic features one needs to understand to be able to work with this:
 
 - events are C structs and comprise a triple of when, who, and what. Writing an event should be as easy as setting the time of the event labeled `todo` and assing a string to say what it is
-- events are added to an event queue by writing `EQ.push(todo)`;
+- events are added to an event queue by writing `EQ.push(todo);` (see below)
 - the data for a person (**A**ges, **D**iscrete and **C**ontinuous) are accessed as in the `P.D["alive"]` example here. The programme knows about these names from the column names passed to `simulator`
 - the parameter input data for the relevant person are in `Z` accessed by a string set to the parameter name 
 - a basic understanding of R's random deviates from distributions is needed to assign time-to-events
@@ -152,7 +159,7 @@ There are a few basic features one needs to understand to be able to work with t
 - special events called "initialize" and "finalize" are called for everyone at the start and end. NB do not try to use these as names of other events
 - NB all eligibility/guard logic for events is the responsibility of the user! Nothing is assumed.
 
-For the simple exponential time-to-death or time-to-infection model we consider, the logit defines the events as follows:
+For the simple exponential time-to-death or time-to-infection model we consider, the logic would be defined for the events as follows:
 
 
 ```{Rcpp,eval=FALSE}

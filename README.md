@@ -44,6 +44,12 @@ The person objects created in the engine, with have accessible data accessible v
 
 ### Usage
 
+Let's set the PRNG seed:
+
+``` {.r}
+set.seed(123)
+```
+
 Having specified a model, we can load up the `Rcpp` package and compile it:
 
 ``` {.r}
@@ -75,34 +81,34 @@ Now we can run the model and examine the output:
 
 ``` {.r}
 out <- simulator(AM,CM,DM,100,PPL,recording=FALSE) #returns by side effect
-## 36320 events took place...in 0.069854 seconds.
+## 36239 events took place...in 0.068372 seconds.
 out
 ##   recording turned off
 ## 1         0      0   0
 summary(DM)
-##      alive          infected     
-##  Min.   :0.000   Min.   :0.0000  
-##  1st Qu.:0.000   1st Qu.:0.0000  
-##  Median :0.000   Median :0.0000  
-##  Mean   :0.007   Mean   :0.1639  
-##  3rd Qu.:0.000   3rd Qu.:0.0000  
-##  Max.   :1.000   Max.   :1.0000
+##      alive           infected     
+##  Min.   :0.0000   Min.   :0.0000  
+##  1st Qu.:0.0000   1st Qu.:0.0000  
+##  Median :0.0000   Median :0.0000  
+##  Mean   :0.0064   Mean   :0.1602  
+##  3rd Qu.:0.0000   3rd Qu.:0.0000  
+##  Max.   :1.0000   Max.   :1.0000
 head(CM)
 ##      timeofdeath timeofinfection
-## [1,]    8.225586         0.00000
-## [2,]    2.010119         0.00000
-## [3,]   68.452795        24.13986
-## [4,]   17.615087         0.00000
-## [5,]   21.951581         0.00000
-## [6,]    7.723062         0.00000
+## [1,]   24.925256        23.78700
+## [2,]    7.946165         0.00000
+## [3,]   17.881931        12.44104
+## [4,]    6.909767         0.00000
+## [5,]    1.227568         0.00000
+## [6,]   11.441846         0.00000
 head(AM)
 ##           age
-## [1,] 23.22559
-## [2,] 17.01012
-## [3,] 83.45280
-## [4,] 32.61509
-## [5,] 36.95158
-## [6,] 22.72306
+## [1,] 39.92526
+## [2,] 22.94616
+## [3,] 32.88193
+## [4,] 21.90977
+## [5,] 16.22757
+## [6,] 26.44185
 ```
 
 Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
@@ -117,7 +123,7 @@ P <- ggplot(as.data.frame(cbind(AM,DM)),
 print(P)  
 ```
 
-<img src="README_figs/README-unnamed-chunk-8-1.png" width="768" />
+<img src="README_figs/README-unnamed-chunk-9-1.png" width="768" />
 
 The `recording=TRUE` option is only really intended for debugging. The idea is that any data that is actually wanted from the run for analysis (eg event counts, cumulative costs etc) should be recorded 'by the people', ie encoded in their data and updated during events. Before running again - this time with `recording` turned on - we need to reset the data:
 
@@ -126,20 +132,20 @@ AM[,1] <- 15 # resetting data
 CM[,1] <- CM[,2] <- 0
 DM[,1] <-1; DM[,2] <- 0 
 out <- simulator(AM,CM,DM,100,PPL,recording=TRUE) #
-## 36193 events took place...in 0.122137 seconds.
+## 36196 events took place...in 0.123335 seconds.
 out[(NN-5):(NN+5),]
-##               time      event  who
-## 9995  0.000000e+00 initialize 8188
-## 9996  0.000000e+00 initialize 8189
-## 9997  0.000000e+00 initialize 2047
-## 9998  0.000000e+00 initialize 8190
-## 9999  0.000000e+00 initialize 4095
-## 10000 0.000000e+00 initialize 8191
-## 10001 9.425472e-05        die 7898
-## 10002 4.702489e-04        die 9838
-## 10003 9.589081e-04        die 4959
-## 10004 5.028698e-03        die 7174
-## 10005 7.179381e-03     infect 4909
+##              time      event  who
+## 9995  0.000000000 initialize 8188
+## 9996  0.000000000 initialize 8189
+## 9997  0.000000000 initialize 2047
+## 9998  0.000000000 initialize 8190
+## 9999  0.000000000 initialize 4095
+## 10000 0.000000000 initialize 8191
+## 10001 0.001707960        die 7610
+## 10002 0.002127827        die 7449
+## 10003 0.005683208     infect 2018
+## 10004 0.007554103     infect 9163
+## 10005 0.009211681        die 2901
 ```
 
 The object returned now contains details of the events to check behaviour is as expected. This should probably be changed to include internal data from people also (which is currently gathered in this mode but not formatted for output).
@@ -168,10 +174,12 @@ int eventdefn( person& P,       // person to be acted on
 }
 ```
 
-This much should probably be left as it is, unless you want to edit the guard that means the dead are left alone. The `updateages` call does what it says. There are a few basic features one needs to understand to be able to work with this:
+This much should probably be left as it is, unless you want to edit the guard that means the dead are left alone. This means `alive` should be one of the columns in the matrix `D` passed to `simulator`, with 1 meaning alive. The `updateages` call does what it says.
+
+There are a few other basic features one needs to understand to be able to work with this:
 
 -   events are C structs and comprise a triple of when, who, and what. Writing an event should be as easy as setting the time of the event labeled `todo` and assing a string to say what it is
--   events are added to an event queue by writing `EQ.push(todo)`;
+-   events are added to an event queue by writing `EQ.push(todo);` (see below)
 -   the data for a person (**A**ges, **D**iscrete and **C**ontinuous) are accessed as in the `P.D["alive"]` example here. The programme knows about these names from the column names passed to `simulator`
 -   the parameter input data for the relevant person are in `Z` accessed by a string set to the parameter name
 -   a basic understanding of R's random deviates from distributions is needed to assign time-to-events
@@ -179,7 +187,7 @@ This much should probably be left as it is, unless you want to edit the guard th
 -   special events called "initialize" and "finalize" are called for everyone at the start and end. NB do not try to use these as names of other events
 -   NB all eligibility/guard logic for events is the responsibility of the user! Nothing is assumed.
 
-For the simple exponential time-to-death or time-to-infection model we consider, the logit defines the events as follows:
+For the simple exponential time-to-death or time-to-infection model we consider, the logic would be defined for the events as follows:
 
 ``` {.cpp}
     if(ev.what=="initialize"){                                             // set up death/infection
