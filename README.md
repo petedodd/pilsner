@@ -64,7 +64,7 @@ Here are some parameters, specified in a round about way, to illustrate both sin
 ``` {.r}
 ## parameter examples
 PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN),nu=rep(0.1,NN))
-df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #for converting dataframe
+df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #fn for converting dataframe
 PP0 <- list(unlist(PP[1,])) # take the top row as a parameter input
 PPL <- df2l(PP) # split the whole dataframe into a list with separate parameter for everyone
 ```
@@ -73,47 +73,34 @@ Now we can run the model and examine the output:
 
 ``` {.r}
 out <- simulator(AM,CM,DM,100,PPL,recording=FALSE) #returns by side effect
-## 36248 events took place...in 0.072824 seconds.
-summary(out)
-##    recording     turned       off   
-##  Min.   :0   Min.   :0   Min.   :0  
-##  1st Qu.:0   1st Qu.:0   1st Qu.:0  
-##  Median :0   Median :0   Median :0  
-##  Mean   :0   Mean   :0   Mean   :0  
-##  3rd Qu.:0   3rd Qu.:0   3rd Qu.:0  
-##  Max.   :0   Max.   :0   Max.   :0
-head(DM)
-##      alive infected
-## [1,]     0        0
-## [2,]     0        1
-## [3,]     0        0
-## [4,]     0        1
-## [5,]     0        0
-## [6,]     0        0
+## 36236 events took place...in 0.070907 seconds.
+out
+##   recording turned off
+## 1         0      0   0
+summary(DM)
+##      alive           infected     
+##  Min.   :0.0000   Min.   :0.0000  
+##  1st Qu.:0.0000   1st Qu.:0.0000  
+##  Median :0.0000   Median :0.0000  
+##  Mean   :0.0061   Mean   :0.1672  
+##  3rd Qu.:0.0000   3rd Qu.:0.0000  
+##  Max.   :1.0000   Max.   :1.0000
 head(CM)
 ##      timeofdeath timeofinfection
-## [1,]   37.285297         0.00000
-## [2,]   33.966684        15.63514
-## [3,]    3.829991         0.00000
-## [4,]   46.982539        20.26034
-## [5,]    3.589370         0.00000
-## [6,]   23.992239         0.00000
+## [1,]   13.309429        0.000000
+## [2,]    5.108318        0.000000
+## [3,]   10.370497        0.000000
+## [4,]   38.884127        3.975055
+## [5,]   18.822349        0.000000
+## [6,]   13.483139        0.000000
 head(AM)
 ##           age
-## [1,] 52.28530
-## [2,] 48.96668
-## [3,] 18.82999
-## [4,] 61.98254
-## [5,] 18.58937
-## [6,] 38.99224
-summary(DM)
-##      alive          infected     
-##  Min.   :0.000   Min.   :0.0000  
-##  1st Qu.:0.000   1st Qu.:0.0000  
-##  Median :0.000   Median :0.0000  
-##  Mean   :0.007   Mean   :0.1608  
-##  3rd Qu.:0.000   3rd Qu.:0.0000  
-##  Max.   :1.000   Max.   :1.0000
+## [1,] 28.30943
+## [2,] 20.10832
+## [3,] 25.37050
+## [4,] 53.88413
+## [5,] 33.82235
+## [6,] 28.48314
 ```
 
 Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
@@ -121,7 +108,7 @@ Note again how this acts by side-effect. `out` contains a reminder that it is em
 Check by plotting:
 
 ``` {.r}
-library(ggplot2)  # loading plotting library (once)
+library(ggplot2)  # plotting library 
 P <- ggplot(as.data.frame(cbind(AM,DM)),
       aes(x=age,fill=factor(infected))) +
   geom_histogram() + theme_classic()
@@ -130,10 +117,48 @@ print(P)
 
 <img src="README_figs/README-unnamed-chunk-8-1.png" width="912" />
 
+The `recording=TRUE` option is only really intended for debugging. The idea is that any data that is actually wanted from the run for analysis (eg event counts, cumulative costs etc) should be recorded 'by the people', ie encoded in their data and updated during events. Before running again - this time with `recording` turned on - we need to reset the data:
+
+``` {.r}
+AM[,1] <- 15 # resetting data 
+CM[,1] <- CM[,2] <- 0
+DM[,1] <-1; DM[,2] <- 0 
+out <- simulator(AM,CM,DM,100,PPL,recording=TRUE) #
+## 36235 events took place...in 0.112529 seconds.
+out[(NN-5):(NN+5),]
+##              time      event  who
+## 9995  0.000000000 initialize 8188
+## 9996  0.000000000 initialize 8189
+## 9997  0.000000000 initialize 2047
+## 9998  0.000000000 initialize 8190
+## 9999  0.000000000 initialize 4095
+## 10000 0.000000000 initialize 8191
+## 10001 0.001439965        die 1579
+## 10002 0.002666722        die 3767
+## 10003 0.002846548        die 8156
+## 10004 0.003764989     infect 2232
+## 10005 0.005101420        die 4439
+```
+
+The object returned now contains details of the events to check behaviour is as expected. This should probably be changed to include internal data from people also (which is currently gathered in this mode but not formatted for output).
+
 ### Model specification
 
-TODO also \<0 advance bug? & CR
+TODO
+
+### TODO list
+
+-   more thorough checking for bugs
+    -   think bug if initial ages are ==0?
+    -   check event times can't be past end time
+-   inclusion of more output for `recording=TRUE`
+-   get GSL PRNGs working and benchmark
+-   openmp: split into different event queues, 1 per core
 
 ### Warning
 
 There are indubitably bugs -- this isn't fully tested. Feedback and corrections most welcome!
+
+### License
+
+1.  P.J. Dodd (2018): Distributed under CC BY 4.0 license <https://creativecommons.org/licenses/by/4.0/>

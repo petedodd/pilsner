@@ -1,3 +1,4 @@
+// (C) P.J. Dodd (2018): Distributed under CC BY 4.0 license https://creativecommons.org/licenses/by/4.0/
 #ifndef EVENTDEFN               /* guard */
 #define EVENTDEFN
 

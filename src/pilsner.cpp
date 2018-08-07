@@ -1,9 +1,6 @@
+// (C) P.J. Dodd (2018): Distributed under CC BY 4.0 license https://creativecommons.org/licenses/by/4.0/
 #include "eventlogic.h"         // includes other class definitions etc
 
-// TODO openmp?
-// TODO use of GSL and benchmarking
-// TODO time in events can be bigger than end time?? check as potential bug
-// TODO verbose event recording to include internal states
 
 // =========== class definitions ===============
 

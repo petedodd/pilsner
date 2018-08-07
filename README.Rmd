@@ -78,7 +78,7 @@ Here are some parameters, specified in a round about way, to illustrate both sin
 ```{r}
 ## parameter examples
 PP <- data.frame(mu=rep(.05,NN),lambda=rep(0.01,NN),nu=rep(0.1,NN))
-df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #for converting dataframe
+df2l <- function(x) lapply(split(x,1:nrow(x)),unlist) #fn for converting dataframe
 PP0 <- list(unlist(PP[1,])) # take the top row as a parameter input
 PPL <- df2l(PP) # split the whole dataframe into a list with separate parameter for everyone
 ```
@@ -86,28 +86,51 @@ PPL <- df2l(PP) # split the whole dataframe into a list with separate parameter 
 Now we can run the model and examine the output:
 ```{r}
 out <- simulator(AM,CM,DM,100,PPL,recording=FALSE) #returns by side effect
-summary(out)
-head(DM)
+out
+summary(DM)
 head(CM)
 head(AM)
-summary(DM)
 ```
 Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
 
 Check by plotting:
 ```{r, message=FALSE, warning=FALSE, fig.height=9.5, fig.width=9.5}
-library(ggplot2)  # loading plotting library (once)
+library(ggplot2)  # plotting library 
 P <- ggplot(as.data.frame(cbind(AM,DM)),
       aes(x=age,fill=factor(infected))) +
   geom_histogram() + theme_classic()
 print(P)  
 ```
 
+The `recording=TRUE` option is only really intended for debugging. The idea is that any data that is actually wanted from the run for analysis (eg event counts, cumulative costs etc) should be recorded 'by the people', ie encoded in their data and updated during events. Before running again - this time with `recording` turned on - we need to reset the data:
+
+```{r}
+AM[,1] <- 15 # resetting data 
+CM[,1] <- CM[,2] <- 0
+DM[,1] <-1; DM[,2] <- 0 
+out <- simulator(AM,CM,DM,100,PPL,recording=TRUE) #
+out[(NN-5):(NN+5),]
+```
+The object returned now contains details of the events to check behaviour is as expected. This should probably be changed to include internal data from people also (which is currently gathered in this mode but not formatted for output).
+
 ### Model specification
 
-TODO also <0 advance bug? & CR
+TODO 
+
+### TODO list
+
+- more thorough checking for bugs
+	- think bug if initial ages are ==0?
+	- check event times can't be past end time
+- inclusion of more output for `recording=TRUE`
+- get GSL PRNGs working and benchmark
+- openmp: split into different event queues, 1 per core
 
 
 ### Warning
 
 There are indubitably bugs -- this isn't fully tested. Feedback and corrections most welcome!
+
+### License
+
+(C) P.J. Dodd (2018): Distributed under CC BY 4.0 license https://creativecommons.org/licenses/by/4.0/
