@@ -75,34 +75,34 @@ Now we can run the model and examine the output:
 
 ``` {.r}
 out <- simulator(AM,CM,DM,100,PPL,recording=FALSE) #returns by side effect
-## 36313 events took place...in 0.068818 seconds.
+## 36320 events took place...in 0.069854 seconds.
 out
 ##   recording turned off
 ## 1         0      0   0
 summary(DM)
-##      alive           infected     
-##  Min.   :0.0000   Min.   :0.0000  
-##  1st Qu.:0.0000   1st Qu.:0.0000  
-##  Median :0.0000   Median :0.0000  
-##  Mean   :0.0071   Mean   :0.1704  
-##  3rd Qu.:0.0000   3rd Qu.:0.0000  
-##  Max.   :1.0000   Max.   :1.0000
+##      alive          infected     
+##  Min.   :0.000   Min.   :0.0000  
+##  1st Qu.:0.000   1st Qu.:0.0000  
+##  Median :0.000   Median :0.0000  
+##  Mean   :0.007   Mean   :0.1639  
+##  3rd Qu.:0.000   3rd Qu.:0.0000  
+##  Max.   :1.000   Max.   :1.0000
 head(CM)
 ##      timeofdeath timeofinfection
-## [1,]    7.920570               0
-## [2,]    6.735046               0
-## [3,]    4.786525               0
-## [4,]    4.184110               0
-## [5,]    9.778131               0
-## [6,]   41.893517               0
+## [1,]    8.225586         0.00000
+## [2,]    2.010119         0.00000
+## [3,]   68.452795        24.13986
+## [4,]   17.615087         0.00000
+## [5,]   21.951581         0.00000
+## [6,]    7.723062         0.00000
 head(AM)
 ##           age
-## [1,] 22.92057
-## [2,] 21.73505
-## [3,] 19.78653
-## [4,] 19.18411
-## [5,] 24.77813
-## [6,] 56.89352
+## [1,] 23.22559
+## [2,] 17.01012
+## [3,] 83.45280
+## [4,] 32.61509
+## [5,] 36.95158
+## [6,] 22.72306
 ```
 
 Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
@@ -117,7 +117,7 @@ P <- ggplot(as.data.frame(cbind(AM,DM)),
 print(P)  
 ```
 
-<img src="README_figs/README-unnamed-chunk-8-1.png" width="912" />
+<img src="README_figs/README-unnamed-chunk-8-1.png" width="768" />
 
 The `recording=TRUE` option is only really intended for debugging. The idea is that any data that is actually wanted from the run for analysis (eg event counts, cumulative costs etc) should be recorded 'by the people', ie encoded in their data and updated during events. Before running again - this time with `recording` turned on - we need to reset the data:
 
@@ -126,20 +126,20 @@ AM[,1] <- 15 # resetting data
 CM[,1] <- CM[,2] <- 0
 DM[,1] <-1; DM[,2] <- 0 
 out <- simulator(AM,CM,DM,100,PPL,recording=TRUE) #
-## 36293 events took place...in 0.125298 seconds.
+## 36193 events took place...in 0.122137 seconds.
 out[(NN-5):(NN+5),]
-##              time      event  who
-## 9995  0.000000000 initialize 8188
-## 9996  0.000000000 initialize 8189
-## 9997  0.000000000 initialize 2047
-## 9998  0.000000000 initialize 8190
-## 9999  0.000000000 initialize 4095
-## 10000 0.000000000 initialize 8191
-## 10001 0.001391645        die 8271
-## 10002 0.002838486        die 6628
-## 10003 0.005710647        die 6975
-## 10004 0.005777740        die 9705
-## 10005 0.007923860        die 3838
+##               time      event  who
+## 9995  0.000000e+00 initialize 8188
+## 9996  0.000000e+00 initialize 8189
+## 9997  0.000000e+00 initialize 2047
+## 9998  0.000000e+00 initialize 8190
+## 9999  0.000000e+00 initialize 4095
+## 10000 0.000000e+00 initialize 8191
+## 10001 9.425472e-05        die 7898
+## 10002 4.702489e-04        die 9838
+## 10003 9.589081e-04        die 4959
+## 10004 5.028698e-03        die 7174
+## 10005 7.179381e-03     infect 4909
 ```
 
 The object returned now contains details of the events to check behaviour is as expected. This should probably be changed to include internal data from people also (which is currently gathered in this mode but not formatted for output).
@@ -153,8 +153,7 @@ int eventdefn( person& P,       // person to be acted on
                double& now,     // reference to current time
                event & ev,      // event to be enacted
                eventq& EQ,      // event queue to add consequences to
-               NumericVector& Z// ,          // input parameters
-               // gsl_rng *r
+               NumericVector& Z // input parameters
                ){
   now = ev.t;                   // advance time
   if(P.D["alive"]==1){          // RIP

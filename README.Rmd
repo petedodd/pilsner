@@ -96,7 +96,7 @@ head(AM)
 Note again how this acts by side-effect. `out` contains a reminder that it is empty unless `recording=TRUE` (which slows things down). For this simple model, it ran at around half a million events per second on my desktop. Further speed-ups could probably be achieved by using GSL PRNGs for example.
 
 Check by plotting:
-```{r, message=FALSE, warning=FALSE, fig.height=9.5, fig.width=9.5}
+```{r, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
 library(ggplot2)  # plotting library 
 P <- ggplot(as.data.frame(cbind(AM,DM)),
       aes(x=age,fill=factor(infected))) +
@@ -124,8 +124,7 @@ int eventdefn( person& P,       // person to be acted on
                double& now,     // reference to current time
                event & ev,      // event to be enacted
                eventq& EQ,      // event queue to add consequences to
-               NumericVector& Z// ,          // input parameters
-               // gsl_rng *r
+               NumericVector& Z // input parameters
                ){
   now = ev.t;                   // advance time
   if(P.D["alive"]==1){          // RIP
